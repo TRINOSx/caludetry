@@ -1,0 +1,259 @@
+/* ================================
+   Animations & Effects
+   ================================ */
+
+/* Keyframes */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(6,182,212,0.3); }
+    50% { box-shadow: 0 0 20px rgba(6,182,212,0.6); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes rotate360 {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes dataFlow {
+    0% { opacity: 0; transform: translateY(10px); }
+    20% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes borderGlow {
+    0%, 100% { border-color: var(--border-color); }
+    50% { border-color: var(--accent-cyan); }
+}
+
+@keyframes scanline {
+    0% { top: -5%; }
+    100% { top: 105%; }
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.02); opacity: 1; }
+}
+
+@keyframes particleFloat {
+    0% { transform: translate(0, 0) scale(0); opacity: 0; }
+    20% { opacity: 1; transform: translate(var(--tx1), var(--ty1)) scale(1); }
+    80% { opacity: 0.6; }
+    100% { transform: translate(var(--tx2), var(--ty2)) scale(0); opacity: 0; }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.6s ease forwards;
+}
+
+.fade-in-up {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+.fade-in-right {
+    opacity: 0;
+    animation: fadeInRight 0.5s ease forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+.fade-in-left {
+    opacity: 0;
+    animation: fadeInLeft 0.5s ease forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+.pulse-glow {
+    animation: pulse-glow 2s ease infinite;
+}
+
+.weather-animated {
+    animation: float 3s ease infinite;
+}
+
+.data-refresh {
+    animation: dataFlow 0.5s ease;
+}
+
+/* Hover Effects */
+.hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.hover-glow {
+    transition: box-shadow 0.3s ease;
+}
+.hover-glow:hover {
+    box-shadow: var(--shadow-glow-cyan);
+}
+
+/* Scanline Effect (on maps) */
+.scanline-effect::after {
+    content: '';
+    position: absolute;
+    top: -5%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(6,182,212,0.5), transparent);
+    animation: scanline 3s linear infinite;
+    pointer-events: none;
+}
+
+/* Data Update Flash */
+.value-update {
+    animation: dataFlow 0.4s ease;
+}
+
+/* Card Entrance */
+.card-enter {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98);
+    transition: all 0.4s ease;
+}
+.card-enter.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Loading Shimmer */
+.loading-shimmer {
+    background: linear-gradient(90deg,
+        var(--bg-card) 25%,
+        var(--bg-card-hover) 50%,
+        var(--bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease infinite;
+}
+
+/* Breathe Animation for active elements */
+.breathe {
+    animation: breathe 4s ease infinite;
+}
+
+/* Number Counter Animation */
+.counter-animate {
+    transition: all 0.5s ease;
+}
+
+/* Particle Container */
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+}
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    animation: particleFloat var(--duration, 3s) ease infinite;
+    animation-delay: var(--delay, 0s);
+}
+
+/* Chart Line Animation */
+.chart-line-draw {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawLine 2s ease forwards;
+}
+@keyframes drawLine {
+    to { stroke-dashoffset: 0; }
+}
+
+/* Status Bar Animation */
+.status-fill {
+    width: 0;
+    animation: fillBar 1.5s ease forwards;
+    animation-delay: var(--delay, 0.5s);
+}
+@keyframes fillBar {
+    to { width: var(--target-width); }
+}
+
+/* Ripple Effect */
+.ripple {
+    position: relative;
+    overflow: hidden;
+}
+.ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(6,182,212,0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+}
+.ripple:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* Notification Badge Bounce */
+.badge {
+    animation: none;
+    transition: transform 0.3s ease;
+}
+.badge.bounce {
+    animation: badgeBounce 0.5s ease;
+}
+@keyframes badgeBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}

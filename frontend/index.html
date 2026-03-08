@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOC Field Intelligence - Plant Metabolism Platform</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container pulse-glow">
+                <i class="fas fa-seedling"></i>
+            </div>
+            <span class="logo-text">VOC<span class="accent">Field</span></span>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item active" data-section="dashboard" title="Dashboard">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </li>
+            <li class="menu-item" data-section="parcels" title="Parcelas">
+                <i class="fas fa-map"></i>
+                <span>Parcelas</span>
+            </li>
+            <li class="menu-item" data-section="sensors" title="Sensores">
+                <i class="fas fa-microchip"></i>
+                <span>Sensores</span>
+            </li>
+            <li class="menu-item" data-section="voc-monitor" title="VOC Monitor">
+                <i class="fas fa-wind"></i>
+                <span>VOC Monitor</span>
+            </li>
+            <li class="menu-item" data-section="predictions" title="Predicciones">
+                <i class="fas fa-brain"></i>
+                <span>Predicciones ML</span>
+            </li>
+            <li class="menu-item" data-section="alerts" title="Alertas">
+                <i class="fas fa-bell"></i>
+                <span>Alertas</span>
+                <span class="badge" id="alert-count">3</span>
+            </li>
+            <li class="menu-item" data-section="alphaearth" title="AlphaEarth">
+                <i class="fas fa-globe-americas"></i>
+                <span>AlphaEarth</span>
+            </li>
+            <li class="menu-item" data-section="settings" title="Configuracion">
+                <i class="fas fa-cog"></i>
+                <span>Config</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="connection-status online">
+                <span class="status-dot"></span>
+                <span>En linea</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content" class="main-content">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button id="sidebar-toggle" class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">Hacienda San Joaquin</span>
+                    <i class="fas fa-chevron-right"></i>
+                    <span class="breadcrumb-item active" id="current-section">Dashboard</span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                </div>
+                <div class="datetime" id="datetime"></div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section id="section-dashboard" class="content-section active">
+            <!-- Parcel Header Card -->
+            <div class="parcel-header fade-in-up">
+                <div class="parcel-map-container">
+                    <canvas id="parcelMapCanvas" width="280" height="200"></canvas>
+                    <div class="map-overlay">
+                        <div class="map-stat">
+                            <span class="map-label">High</span>
+                            <span class="map-value">85 kg/h</span>
+                            <span class="map-area">4.5 ha</span>
+                        </div>
+                        <div class="map-stat low">
+                            <span class="map-label">Low</span>
+                            <span class="map-value">115 kg/h</span>
+                            <span class="map-area">6.2 ha</span>
+                        </div>
+                    </div>
+                    <div class="soil-info">
+                        <div class="soil-item"><span>Phosphorus</span><span class="val">10.5</span></div>
+                        <div class="soil-item"><span>Magnesium</span><span class="val">7.2</span></div>
+                        <div class="soil-item"><span>Acidity</span><span class="val">3.0</span></div>
+                        <div class="soil-item"><span>Humidity</span><span class="val">38%</span></div>
+                    </div>
+                </div>
+
+                <div class="parcel-info">
+                    <h1 class="parcel-title">PARCELA <span id="parcel-number">1</span></h1>
+                    <h2 class="hacienda-name">HACIENDA SAN JOAQUIN</h2>
+                    <p class="crop-type">CROP: <strong id="crop-name">CORN</strong></p>
+                    <div class="weather-widget">
+                        <div class="weather-temp">
+                            <span class="temp-main" id="temp-main">+16&deg;</span>
+                            <div class="temp-range">
+                                <span>H: +19&deg;</span>
+                                <span>L: +10&deg;</span>
+                            </div>
+                        </div>
+                        <div class="weather-icon">
+                            <i class="fas fa-cloud-sun weather-animated"></i>
+                        </div>
+                        <div class="weather-details">
+                            <div class="weather-detail">
+                                <i class="fas fa-tint"></i>
+                                <span class="wd-label">Humidity</span>
+                                <span class="wd-value" id="wd-humidity">74%</span>
+                            </div>
+                            <div class="weather-detail">
+                                <i class="fas fa-cloud-rain"></i>
+                                <span class="wd-label">Precip.</span>
+                                <span class="wd-value" id="wd-precip">5 mm</span>
+                            </div>
+                            <div class="weather-detail">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span class="wd-label">Pressure</span>
+                                <span class="wd-value" id="wd-pressure">1019 hPa</span>
+                            </div>
+                            <div class="weather-detail">
+                                <i class="fas fa-wind"></i>
+                                <span class="wd-label">Wind</span>
+                                <span class="wd-value" id="wd-wind">18 km/h</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="plant-status">
+                    <div class="status-item fade-in-right" style="--delay: 0.1s">
+                        <div class="status-value" id="stress-value">10%</div>
+                        <div class="status-label">STRESS</div>
+                        <div class="status-bar"><div class="status-fill stress" style="width:10%"></div></div>
+                    </div>
+                    <div class="status-item fade-in-right" style="--delay: 0.2s">
+                        <div class="status-value" id="floration-value">1%</div>
+                        <div class="status-label">FLORATION</div>
+                        <div class="status-bar"><div class="status-fill floration" style="width:1%"></div></div>
+                    </div>
+                    <div class="status-item fade-in-right" style="--delay: 0.3s">
+                        <div class="status-value" id="plagues-value">0%</div>
+                        <div class="status-label">PLAGUES</div>
+                        <div class="status-bar"><div class="status-fill plagues" style="width:0%"></div></div>
+                    </div>
+                    <div class="status-item fade-in-right" style="--delay: 0.4s">
+                        <div class="status-value" id="metabolism-value">80%</div>
+                        <div class="status-label">METABOLISM</div>
+                        <div class="status-bar"><div class="status-fill metabolism" style="width:80%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VOC Gas Readings -->
+            <div class="voc-readings fade-in-up" style="--delay: 0.2s">
+                <div class="voc-readings-grid" id="voc-readings-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row fade-in-up" style="--delay: 0.3s">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>VOC Time Series</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-range="1h">1H</button>
+                            <button class="chart-btn" data-range="6h">6H</button>
+                            <button class="chart-btn" data-range="24h">24H</button>
+                            <button class="chart-btn" data-range="7d">7D</button>
+                        </div>
+                    </div>
+                    <canvas id="vocTimeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Soil & Climate</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-range="1h">1H</button>
+                            <button class="chart-btn" data-range="6h">6H</button>
+                            <button class="chart-btn" data-range="24h">24H</button>
+                        </div>
+                    </div>
+                    <canvas id="soilClimateChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Prediction Timeline -->
+            <div class="prediction-section fade-in-up" style="--delay: 0.4s">
+                <div class="prediction-header">
+                    <div class="prediction-arrow left">
+                        <span class="arrow-label">LAST</span>
+                        <i class="fas fa-arrow-left"></i>
+                    </div>
+                    <div class="prediction-center">
+                        <div class="now-indicator pulse-glow">
+                            <i class="fas fa-satellite-dish"></i>
+                            <span>NOW</span>
+                            <span class="now-parcel">PARCELA 1</span>
+                            <span class="now-time" id="now-time">--</span>
+                        </div>
+                    </div>
+                    <div class="prediction-arrow right">
+                        <i class="fas fa-arrow-right"></i>
+                        <span class="arrow-label">PREDICTION</span>
+                    </div>
+                </div>
+                <div class="prediction-timeline">
+                    <div class="timeline-track" id="timeline-track">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ML Prediction Cards -->
+            <div class="ml-cards fade-in-up" style="--delay: 0.5s">
+                <div class="ml-card">
+                    <div class="ml-card-header">
+                        <i class="fas fa-brain"></i>
+                        <h4>Prediction +24h</h4>
+                    </div>
+                    <div class="ml-card-body">
+                        <div class="ml-metric">
+                            <span class="ml-label">Stress</span>
+                            <span class="ml-value warning">12%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Plagues</span>
+                            <span class="ml-value good">0.5%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Metabolism</span>
+                            <span class="ml-value excellent">78%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-card">
+                    <div class="ml-card-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Prediction +72h</h4>
+                    </div>
+                    <div class="ml-card-body">
+                        <div class="ml-metric">
+                            <span class="ml-label">Stress</span>
+                            <span class="ml-value warning">15%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Plagues</span>
+                            <span class="ml-value good">1.2%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Metabolism</span>
+                            <span class="ml-value excellent">75%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-card">
+                    <div class="ml-card-header">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h4>Prediction +7d</h4>
+                    </div>
+                    <div class="ml-card-body">
+                        <div class="ml-metric">
+                            <span class="ml-label">Stress</span>
+                            <span class="ml-value caution">18%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Plagues</span>
+                            <span class="ml-value good">2.1%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Metabolism</span>
+                            <span class="ml-value excellent">72%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-card alpha-earth-card">
+                    <div class="ml-card-header">
+                        <i class="fas fa-globe-americas"></i>
+                        <h4>AlphaEarth</h4>
+                    </div>
+                    <div class="ml-card-body">
+                        <div class="ml-metric">
+                            <span class="ml-label">Geo Score</span>
+                            <span class="ml-value excellent">92%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">Soil Health</span>
+                            <span class="ml-value excellent">87%</span>
+                        </div>
+                        <div class="ml-metric">
+                            <span class="ml-label">NDVI</span>
+                            <span class="ml-value excellent">0.82</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VOC Monitor Section -->
+        <section id="section-voc-monitor" class="content-section">
+            <h2 class="section-title"><i class="fas fa-wind"></i> VOC Monitor - Bosch Nose</h2>
+            <div class="voc-full-grid" id="voc-full-grid">
+                <!-- Generated by JS - all 300+ VOCs -->
+            </div>
+            <div class="voc-chart-full">
+                <canvas id="vocFullChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Sensors Section -->
+        <section id="section-sensors" class="content-section">
+            <h2 class="section-title"><i class="fas fa-microchip"></i> Sensor Network</h2>
+            <div class="sensor-grid" id="sensor-grid">
+                <!-- Generated by JS -->
+            </div>
+        </section>
+
+        <!-- Predictions Section -->
+        <section id="section-predictions" class="content-section">
+            <h2 class="section-title"><i class="fas fa-brain"></i> ML Predictions</h2>
+            <div class="prediction-dashboard">
+                <div class="pred-chart-container">
+                    <canvas id="predictionRadar"></canvas>
+                </div>
+                <div class="pred-chart-container">
+                    <canvas id="metabolismChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Alerts Section -->
+        <section id="section-alerts" class="content-section">
+            <h2 class="section-title"><i class="fas fa-bell"></i> Alerts</h2>
+            <div class="alerts-list" id="alerts-list">
+                <!-- Generated by JS -->
+            </div>
+        </section>
+
+        <!-- AlphaEarth Section -->
+        <section id="section-alphaearth" class="content-section">
+            <h2 class="section-title"><i class="fas fa-globe-americas"></i> AlphaEarth Integration</h2>
+            <div class="alphaearth-dashboard">
+                <div class="ae-map-container">
+                    <canvas id="alphaEarthMap" width="800" height="500"></canvas>
+                </div>
+                <div class="ae-metrics">
+                    <div class="ae-card">
+                        <h4>Geospatial Embedding</h4>
+                        <div class="ae-vector" id="ae-vector"></div>
+                    </div>
+                    <div class="ae-card">
+                        <h4>Regional Comparison</h4>
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Parcels Section -->
+        <section id="section-parcels" class="content-section">
+            <h2 class="section-title"><i class="fas fa-map"></i> Parcelas</h2>
+            <div class="parcels-grid" id="parcels-grid">
+                <!-- Generated by JS -->
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="section-settings" class="content-section">
+            <h2 class="section-title"><i class="fas fa-cog"></i> Configuration</h2>
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <h4>Sensor Sampling Rate</h4>
+                    <div class="setting-row">
+                        <label>VOC Gases</label>
+                        <select id="voc-rate"><option>5s</option><option selected>15s</option><option>30s</option></select>
+                    </div>
+                    <div class="setting-row">
+                        <label>Soil Sensors</label>
+                        <select id="soil-rate"><option>1min</option><option selected>5min</option><option>15min</option></select>
+                    </div>
+                    <div class="setting-row">
+                        <label>Climate</label>
+                        <select id="climate-rate"><option>30s</option><option selected>1min</option><option>5min</option></select>
+                    </div>
+                </div>
+                <div class="settings-card">
+                    <h4>Alert Thresholds</h4>
+                    <div class="setting-row">
+                        <label>Methane (ppb)</label>
+                        <input type="number" value="500" id="threshold-methane">
+                    </div>
+                    <div class="setting-row">
+                        <label>NH3 (ppb)</label>
+                        <input type="number" value="300" id="threshold-nh3">
+                    </div>
+                    <div class="setting-row">
+                        <label>Stress Alert (%)</label>
+                        <input type="number" value="25" id="threshold-stress">
+                    </div>
+                </div>
+                <div class="settings-card">
+                    <h4>API Connection</h4>
+                    <div class="setting-row">
+                        <label>Backend URL</label>
+                        <input type="text" value="http://localhost:8080/api" id="api-url">
+                    </div>
+                    <div class="setting-row">
+                        <label>MQTT Broker</label>
+                        <input type="text" value="mqtt://localhost:1883" id="mqtt-url">
+                    </div>
+                    <div class="setting-row">
+                        <button class="btn-primary" onclick="VOCApp.testConnection()">Test Connection</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/voc-data.js"></script>
+    <script src="js/api-client.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
