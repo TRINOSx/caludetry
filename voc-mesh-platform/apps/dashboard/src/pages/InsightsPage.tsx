@@ -1,145 +1,188 @@
-import { useEffect, useState } from 'react';
-import { api, type Parcela } from '../store/api';
-import { useTenantStore } from '../store/tenant';
+import { useState, useEffect } from 'react';
+import clsx from 'clsx';
+import { api, type Insight, type Parcela } from '../store/api';
+import SkeletonCard from '../components/SkeletonCard';
 
-interface Insight {
-  id: string;
-  parcela_id: string;
-  parcela_name?: string;
-  summary: string;
-  urgency_level: 'low' | 'medium' | 'high' | 'critical';
-  recommended_actions: string[];
-  scientific_reasoning: string;
-  created_at: string;
-}
-
-const urgencyColors = {
-  low: 'bg-green-500/20 text-green-400 border-green-500/30',
-  medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+const URGENCY_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  low: { bg: 'bg-voc/10', text: 'text-voc', label: 'Low' },
+  medium: { bg: 'bg-yellow-400/10', text: 'text-yellow-400', label: 'Medium' },
+  high: { bg: 'bg-orange-500/10', text: 'text-orange-500', label: 'High' },
+  critical: { bg: 'bg-alert/10', text: 'text-alert', label: 'Critical' },
 };
 
+function InsightCard({ insight }: { insight: Insight }) {
+  const [expanded, setExpanded] = useState(false);
+  const urgency = URGENCY_CONFIG[insight.urgency] ?? URGENCY_CONFIG.low;
+
+  return (
+    <div className="glass-panel p-4 border border-white/5">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={clsx('px-2 py-0.5 rounded-full text-[10px] font-medium', urgency.bg, urgency.text)}>
+              {urgency.label}
+            </span>
+            <span className="text-[10px] text-text-dim font-body">
+              {insight.parcela_name}
+            </span>
+          </div>
+          <h3 className="font-display text-sm text-text">{insight.title}</h3>
+        </div>
+        <span className="text-[10px] text-text-dim font-body whitespace-nowrap">
+          {new Date(insight.created_at).toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      </div>
+
+      <p className="text-sm text-text-muted font-body leading-relaxed mb-3">
+        {insight.recommendation}
+      </p>
+
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs text-voc/70 hover:text-voc font-body transition-colors"
+      >
+        <svg
+          className={clsx('w-3 h-3 transition-transform', expanded && 'rotate-90')}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+        Scientific Reasoning
+      </button>
+
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <p className="text-xs text-text-dim font-body leading-relaxed whitespace-pre-wrap">
+            {insight.scientific_reasoning}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InsightsPage() {
-  const { useFeatureFlag } = useTenantStore();
-  const aiEnabled = useFeatureFlag('ai_insights_enabled');
   const [insights, setInsights] = useState<Insight[]>([]);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterUrgency, setFilterUrgency] = useState<string>('all');
 
   useEffect(() => {
-    api.getParcelas().then(setParcelas);
-    api.getInsights().then(setInsights).catch(() => {});
+    const load = async () => {
+      try {
+        const [insightList, parcelaList] = await Promise.all([
+          api.getInsights(),
+          api.getParcelas(),
+        ]);
+        setInsights(insightList);
+        setParcelas(parcelaList);
+      } catch {
+        // handled by api client
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const generateInsight = async (parcelaId: string) => {
+  const handleGenerate = async (parcelaId: string) => {
     setGenerating(parcelaId);
     try {
-      const insight = await api.generateInsight(parcelaId);
-      setInsights((prev) => [insight, ...prev]);
-    } catch (err) {
-      console.error('Failed to generate insight:', err);
+      const newInsight = await api.generateInsight(parcelaId);
+      setInsights((prev) => [newInsight, ...prev]);
+    } catch {
+      // handled by api client
     } finally {
       setGenerating(null);
     }
   };
 
-  if (!aiEnabled) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-4xl mb-4">🧠</p>
-        <p className="text-text-muted text-lg">AI Insights not available on your plan</p>
-        <p className="text-text-dim text-sm mt-2">Upgrade to AGRO_ENTERPRISE for AI-powered recommendations</p>
-      </div>
-    );
-  }
+  const filteredInsights =
+    filterUrgency === 'all'
+      ? insights
+      : insights.filter((i) => i.urgency === filterUrgency);
 
   return (
-    <div className="space-y-4">
-      {/* Generate Buttons */}
-      <div className="bg-panel rounded-lg p-4 border border-space-50">
-        <h3 className="font-display text-sm text-text mb-3">Generate AI Insight</h3>
-        <div className="flex flex-wrap gap-2">
-          {parcelas.map((p) => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="font-display text-lg text-text">AI Insights</h2>
+        <div className="flex gap-1">
+          {['all', 'critical', 'high', 'medium', 'low'].map((level) => (
             <button
-              key={p.id}
-              onClick={() => generateInsight(p.id)}
-              disabled={generating === p.id}
-              className="px-4 py-2 bg-space rounded-lg border border-space-50 text-sm text-text-muted
-                         hover:border-voc hover:text-voc transition-all disabled:opacity-50"
-            >
-              {generating === p.id ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 border-2 border-voc border-t-transparent rounded-full animate-spin" />
-                  Analyzing...
-                </span>
-              ) : (
-                `🧠 ${p.name}`
+              key={level}
+              onClick={() => setFilterUrgency(level)}
+              className={clsx(
+                'px-2.5 py-1 text-xs font-body rounded capitalize transition-colors',
+                filterUrgency === level
+                  ? 'bg-voc/20 text-voc'
+                  : 'text-text-dim hover:text-text-muted hover:bg-white/5',
               )}
+            >
+              {level}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Insights Feed */}
-      <div className="space-y-3">
-        {insights.length === 0 ? (
-          <div className="text-center py-16 text-text-muted">
-            <p className="text-3xl mb-3">🌱</p>
-            <p>No insights generated yet. Click a parcela above to analyze.</p>
-          </div>
-        ) : (
-          insights.map((insight) => (
-            <div key={insight.id} className="bg-panel rounded-lg border border-space-50 overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 text-xs font-bold rounded border ${urgencyColors[insight.urgency_level]}`}>
-                      {insight.urgency_level.toUpperCase()}
-                    </span>
-                    <span className="text-xs text-text-dim font-mono">
-                      {insight.parcela_name || insight.parcela_id}
-                    </span>
-                  </div>
-                  <span className="text-xs text-text-dim font-mono">
-                    {new Date(insight.created_at).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-text text-sm leading-relaxed">{insight.summary}</p>
-
-                {/* Recommended Actions */}
-                {insight.recommended_actions?.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-text-muted uppercase mb-1">Recommended Actions</p>
-                    <ul className="space-y-1">
-                      {insight.recommended_actions.map((action, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-voc">
-                          <span className="text-voc mt-0.5">→</span>
-                          <span className="text-text-muted">{action}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Scientific Reasoning (expandable) */}
-                <button
-                  onClick={() => setExpandedId(expandedId === insight.id ? null : insight.id)}
-                  className="mt-3 text-xs text-voc/70 hover:text-voc transition-colors"
-                >
-                  {expandedId === insight.id ? '▼ Hide reasoning' : '▶ Scientific reasoning'}
-                </button>
-                {expandedId === insight.id && (
-                  <div className="mt-2 p-3 bg-space rounded-lg text-xs text-text-muted leading-relaxed border border-space-50">
-                    {insight.scientific_reasoning}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
+      {/* Generate buttons per parcela */}
+      <div className="flex flex-wrap gap-2">
+        {parcelas.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => handleGenerate(p.id)}
+            disabled={generating === p.id}
+            className={clsx(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body transition-colors border',
+              generating === p.id
+                ? 'border-voc/20 text-voc/50 cursor-not-allowed'
+                : 'border-voc/30 text-voc hover:bg-voc/10',
+            )}
+          >
+            {generating === p.id ? (
+              <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+              </svg>
+            )}
+            Generate for {p.name}
+          </button>
+        ))}
       </div>
+
+      {/* Insights feed */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} lines={4} />
+          ))}
+        </div>
+      ) : filteredInsights.length > 0 ? (
+        <div className="space-y-4">
+          {filteredInsights.map((insight) => (
+            <InsightCard key={insight.id} insight={insight} />
+          ))}
+        </div>
+      ) : (
+        <div className="glass-panel p-12 text-center">
+          <svg className="w-12 h-12 text-text-dim mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+          </svg>
+          <p className="text-text-muted font-body text-sm">No insights yet. Generate one from a parcela above.</p>
+        </div>
+      )}
     </div>
   );
 }
