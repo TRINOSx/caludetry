@@ -178,6 +178,117 @@ def generate_synthetic_voc_data(n_samples: int = 5000, seed: int = 42) -> tuple[
     return df, labels, class_names
 
 
+def load_metabolomics_sensor_data(
+    csv_path: Path = None,
+    n_samples: int = 200,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, np.ndarray, list[str]]:
+    """
+    Load sensor training data generated from metabolomics compound profiles.
+    If no pre-generated CSV exists, generates data via CompoundSensorMapper.
+
+    Returns:
+        features: DataFrame with sensor response columns
+        labels: ndarray of condition class indices
+        class_names: list of condition names
+    """
+    default_path = DATASETS_DIR / "synthetic_sensor" / "compound_sensor_training.csv"
+    csv_path = csv_path or default_path
+
+    if csv_path.exists():
+        df = pd.read_csv(csv_path)
+        print(f"[loaded] metabolomics sensor data from {csv_path}: {df.shape}")
+    else:
+        # Generate on-the-fly using compound_sensor_map
+        from compound_sensor_map import CompoundSensorMapper
+
+        mapper = CompoundSensorMapper()
+        df = mapper.metabolomics_to_training(n_samples=n_samples, seed=seed)
+
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(csv_path, index=False)
+        print(f"[generated] metabolomics sensor data: {df.shape} → {csv_path}")
+
+    # Extract features and labels
+    meta_cols = ["compound", "condition", "concentration_ppb", "temperature_c", "humidity_pct"]
+    feature_cols = [c for c in df.columns if c not in meta_cols]
+
+    features = df[feature_cols].copy()
+    conditions = df["condition"].astype(str)
+
+    class_names = sorted(conditions.unique().tolist())
+    label_map = {name: idx for idx, name in enumerate(class_names)}
+    labels = conditions.map(label_map).values.astype(int)
+
+    return features, labels, class_names
+
+
+def load_combined_training_data(
+    include_uci: bool = True,
+    include_synthetic: bool = True,
+    include_metabolomics: bool = True,
+    n_synthetic: int = 5000,
+    n_metabolomics: int = 200,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, np.ndarray, list[str]]:
+    """
+    Combine all available data sources into a unified training set.
+
+    Sources:
+        1. UCI Gas Sensor Drift (real MOx sensor data)
+        2. Synthetic VOC data (rule-based simulation)
+        3. Metabolomics-derived sensor data (GC-MS → MOx mapping)
+
+    All sources are normalized to a common feature space.
+    """
+    datasets = []
+    all_class_names = set()
+
+    if include_uci:
+        try:
+            df, labels, classes = load_uci_gas_drift()
+            # Add source tag
+            df = df.copy()
+            df["_source"] = "uci"
+            df["_label"] = labels
+            datasets.append((df, classes, "uci"))
+            all_class_names.update(classes)
+            print(f"[combined] UCI drift: {df.shape[0]} samples, {len(classes)} classes")
+        except FileNotFoundError:
+            print("[skip] UCI drift dataset not downloaded yet")
+
+    if include_synthetic:
+        df, labels, classes = generate_synthetic_voc_data(n_synthetic, seed)
+        df = df.copy()
+        df["_source"] = "synthetic"
+        df["_label"] = labels
+        datasets.append((df, classes, "synthetic"))
+        all_class_names.update(classes)
+        print(f"[combined] Synthetic: {df.shape[0]} samples, {len(classes)} classes")
+
+    if include_metabolomics:
+        try:
+            df, labels, classes = load_metabolomics_sensor_data(n_samples=n_metabolomics, seed=seed)
+            df = df.copy()
+            df["_source"] = "metabolomics"
+            df["_label"] = labels
+            datasets.append((df, classes, "metabolomics"))
+            all_class_names.update(classes)
+            print(f"[combined] Metabolomics: {df.shape[0]} samples, {len(classes)} classes")
+        except Exception as e:
+            print(f"[skip] Metabolomics data: {e}")
+
+    if not datasets:
+        raise ValueError("No datasets available. Run download_datasets.py or generate synthetic data.")
+
+    # Build unified class list
+    unified_classes = sorted(all_class_names)
+    print(f"\n[combined] Unified classes: {unified_classes}")
+    print(f"[combined] Total sources: {len(datasets)}")
+
+    return datasets, unified_classes
+
+
 if __name__ == "__main__":
     print("=== Synthetic VOC Data ===")
     df, labels, classes = generate_synthetic_voc_data(1000)
@@ -185,3 +296,22 @@ if __name__ == "__main__":
     print(f"Classes: {classes}")
     print(f"Label distribution: {np.bincount(labels)}")
     print(f"\nSample row:\n{df.iloc[0]}")
+
+    print("\n=== Metabolomics Sensor Data ===")
+    try:
+        df_m, labels_m, classes_m = load_metabolomics_sensor_data(n_samples=50)
+        print(f"Shape: {df_m.shape}")
+        print(f"Classes: {classes_m}")
+        print(f"Label distribution: {np.bincount(labels_m)}")
+    except Exception as e:
+        print(f"Could not load: {e}")
+
+    print("\n=== Combined Training Data ===")
+    try:
+        datasets, unified = load_combined_training_data(
+            include_uci=False, n_synthetic=500, n_metabolomics=50
+        )
+        total = sum(d[0].shape[0] for d in datasets)
+        print(f"Total samples across all sources: {total}")
+    except Exception as e:
+        print(f"Could not combine: {e}")
