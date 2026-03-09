@@ -1,0 +1,24 @@
+{
+  "name": "voc-mesh-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VOC Mesh Multi-Tenant AgriTech SaaS Platform",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm -r test:integration",
+    "test:e2e": "pnpm -r test:e2e",
+    "lint": "pnpm -r lint",
+    "db:migrate": "cd apps/api && alembic upgrade head",
+    "db:rollback": "cd apps/api && alembic downgrade -1",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

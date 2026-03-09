@@ -1,0 +1,17 @@
+[project]
+name = "voc-ml-pipeline"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "redis>=5.0.0",
+    "asyncpg>=0.29.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    "onnxruntime>=1.17.0",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "onnx>=1.16.0"]

@@ -1,0 +1,162 @@
+version: "3.9"
+
+services:
+  # ================================
+  # TimescaleDB (PostgreSQL)
+  # ================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: voc-timescaledb
+    environment:
+      POSTGRES_DB: voc_mesh
+      POSTGRES_USER: voc_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-voc_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voc_user -d voc_mesh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ================================
+  # Redis
+  # ================================
+  redis:
+    image: redis:7-alpine
+    container_name: voc-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ================================
+  # Mosquitto MQTT Broker
+  # ================================
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: voc-mosquitto
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+      - "9001:9001"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./infra/mosquitto/passwd:/mosquitto/config/passwd
+      - ./infra/mosquitto/acl:/mosquitto/config/acl
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    restart: unless-stopped
+
+  # ================================
+  # FastAPI Backend
+  # ================================
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: voc-api
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voc_user:${DB_PASSWORD:-voc_password}@timescaledb:5432/voc_mesh
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ================================
+  # Edge Agent (MQTT Bridge)
+  # ================================
+  edge-agent:
+    build:
+      context: ./apps/edge-agent
+      dockerfile: Dockerfile
+    container_name: voc-edge-agent
+    depends_on:
+      - mosquitto
+      - redis
+      - timescaledb
+    env_file: .env
+    environment:
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://voc_user:${DB_PASSWORD:-voc_password}@timescaledb:5432/voc_mesh
+    restart: unless-stopped
+
+  # ================================
+  # ML Inference Pipeline
+  # ================================
+  ml-pipeline:
+    build:
+      context: ./packages/ml-pipeline
+      dockerfile: Dockerfile
+    container_name: voc-ml-pipeline
+    depends_on:
+      - redis
+      - timescaledb
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://voc_user:${DB_PASSWORD:-voc_password}@timescaledb:5432/voc_mesh
+    command: python worker.py
+    deploy:
+      replicas: 2
+    restart: unless-stopped
+
+  # ================================
+  # Dashboard (React)
+  # ================================
+  dashboard:
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile
+    container_name: voc-dashboard
+    environment:
+      VITE_API_URL: http://api:8000
+      VITE_MQTT_WS_URL: ws://mosquitto:9001
+    restart: unless-stopped
+
+  # ================================
+  # Nginx Reverse Proxy
+  # ================================
+  nginx:
+    image: nginx:alpine
+    container_name: voc-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - dashboard
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:

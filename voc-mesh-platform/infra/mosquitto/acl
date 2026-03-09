@@ -1,0 +1,23 @@
+# ================================
+# VOC Mesh Platform - MQTT ACL
+# Per-tenant topic isolation
+# ================================
+
+# Platform service account: full access
+user voc_platform
+topic readwrite voc/#
+topic readwrite $SYS/#
+
+# Edge agent: read/write on all tenant topics
+user edge_agent
+topic readwrite voc/+/+/raw
+topic readwrite voc/+/+/predictions
+topic readwrite voc/+/+/commands
+
+# Per-tenant pattern (dynamic users created at provisioning):
+# user tenant_{slug}
+# topic readwrite voc/{slug}/#
+# Each tenant can only access their own namespace
+
+# Pattern-based ACL for tenant users
+pattern readwrite voc/%u/#

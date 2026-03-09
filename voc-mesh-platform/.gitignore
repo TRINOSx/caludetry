@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+*.onnx
+!packages/ml-pipeline/models/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+postgres_data/
+redis_data/
+mosquitto_data/
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.pytest_cache/
+htmlcov/
+
+# Level DB (edge-agent offline buffer)
+.leveldb/
