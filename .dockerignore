@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Internal training (not deployed)
+voc_training_internal/
+ml_training/
+ml/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Data
+*.csv
+*.parquet
+*.onnx
+*.pt
+data/

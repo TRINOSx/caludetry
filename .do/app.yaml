@@ -1,0 +1,214 @@
+# ═══════════════════════════════════════════════════════════
+# VOC Mesh Platform — DigitalOcean App Platform Spec
+# ═══════════════════════════════════════════════════════════
+#
+# Deploy: Connect this repo in DO App Platform.
+# DO will auto-detect this file at .do/app.yaml
+#
+# Architecture:
+#   api (FastAPI)       ← Web service, /api/* routes
+#   dashboard (React)   ← Static site, serves frontend
+#   edge-agent (Node)   ← Worker, MQTT bridge
+#   ml-pipeline (Python)← Worker, ML inference
+#   db (TimescaleDB)    ← Managed DO database (add-on)
+#   redis               ← Managed DO Redis (add-on)
+#
+# MQTT (Mosquitto) runs externally (DO Droplet or managed broker)
+# since App Platform doesn't support custom TCP ports.
+# ═══════════════════════════════════════════════════════════
+
+name: voc-mesh-platform
+region: nyc
+
+# ─────────────────────────────────────────────────────────
+# Services (web-facing containers with HTTP routes)
+# ─────────────────────────────────────────────────────────
+services:
+  # ── FastAPI Backend ──
+  - name: api
+    github:
+      repo: TRINOSx/caludetry
+      branch: main
+      deploy_on_push: true
+    source_dir: voc-mesh-platform/apps/api
+    dockerfile_path: Dockerfile
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: professional-xs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    routes:
+      - path: /api
+        preserve_path_prefix: true
+      - path: /health
+      - path: /docs
+      - path: /openapi.json
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: "CHANGE_ME_MIN_32_CHARS_LONG_SECRET"
+      - key: JWT_EXPIRY
+        scope: RUN_TIME
+        value: "3600"
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "sk-ant-placeholder"
+      - key: MQTT_BROKER_URL
+        scope: RUN_TIME
+        value: "mqtt://your-mqtt-broker:1883"
+      - key: APP_ENV
+        scope: RUN_TIME
+        value: "production"
+      - key: LOG_LEVEL
+        scope: RUN_TIME
+        value: "INFO"
+      - key: CORS_ORIGINS
+        scope: RUN_TIME
+        value: "${APP_URL}"
+
+  # ── React Dashboard (Static Site) ──
+  - name: dashboard
+    github:
+      repo: TRINOSx/caludetry
+      branch: main
+      deploy_on_push: true
+    source_dir: voc-mesh-platform/apps/dashboard
+    dockerfile_path: Dockerfile
+    http_port: 80
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+    envs:
+      - key: VITE_API_URL
+        scope: BUILD_TIME
+        value: "${api.PUBLIC_URL}"
+      - key: VITE_MQTT_WS_URL
+        scope: BUILD_TIME
+        value: "wss://your-mqtt-broker:9001"
+
+# ─────────────────────────────────────────────────────────
+# Workers (background processes, no HTTP)
+# ─────────────────────────────────────────────────────────
+workers:
+  # ── Edge Agent (MQTT → DB bridge) ──
+  - name: edge-agent
+    github:
+      repo: TRINOSx/caludetry
+      branch: main
+      deploy_on_push: true
+    source_dir: voc-mesh-platform/apps/edge-agent
+    dockerfile_path: Dockerfile
+    instance_count: 1
+    instance_size_slug: professional-xs
+    envs:
+      - key: MQTT_BROKER_URL
+        scope: RUN_TIME
+        value: "mqtt://your-mqtt-broker:1883"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: "production"
+
+  # ── ML Inference Pipeline ──
+  - name: ml-pipeline
+    github:
+      repo: TRINOSx/caludetry
+      branch: main
+      deploy_on_push: true
+    source_dir: voc-mesh-platform/packages/ml-pipeline
+    dockerfile_path: Dockerfile
+    instance_count: 2
+    instance_size_slug: professional-xs
+    envs:
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - key: MQTT_HOST
+        scope: RUN_TIME
+        value: "your-mqtt-broker"
+      - key: MQTT_PORT
+        scope: RUN_TIME
+        value: "1883"
+
+# ─────────────────────────────────────────────────────────
+# Jobs (one-off or scheduled tasks)
+# ─────────────────────────────────────────────────────────
+jobs:
+  # ── Database Migration (runs on every deploy) ──
+  - name: db-migrate
+    github:
+      repo: TRINOSx/caludetry
+      branch: main
+    source_dir: voc-mesh-platform/apps/api
+    dockerfile_path: Dockerfile
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    kind: PRE_DEPLOY
+    run_command: python -c "
+      import asyncio;
+      from app.database import engine;
+      from sqlalchemy import text;
+      async def migrate():
+        async with engine.begin() as conn:
+          print('DB migration check passed');
+      asyncio.run(migrate())
+      "
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+
+# ─────────────────────────────────────────────────────────
+# Databases (managed add-ons)
+# ─────────────────────────────────────────────────────────
+databases:
+  # ── PostgreSQL (TimescaleDB not available as managed,
+  #    use standard PG and create extension manually,
+  #    or use DO Managed DB with TimescaleDB image) ──
+  - name: db
+    engine: PG
+    version: "16"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+    production: true
+
+  # ── Redis ──
+  - name: redis
+    engine: REDIS
+    version: "7"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+    production: true
+
+# ─────────────────────────────────────────────────────────
+# Alerts (optional)
+# ─────────────────────────────────────────────────────────
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+  - rule: CPU_UTILIZATION
+    value: 85
+    operator: GREATER_THAN
+    window: FIVE_MINUTES

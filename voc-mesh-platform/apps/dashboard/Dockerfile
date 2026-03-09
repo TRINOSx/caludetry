@@ -18,6 +18,9 @@ RUN rm /etc/nginx/conf.d/default.conf
 # Add custom nginx config
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Nginx config template — API_URL is resolved at container start
+# On DO App Platform, routing is handled by the app spec (routes in .do/app.yaml)
+# so the /api/ proxy is only used for docker-compose (local dev / self-hosted)
 RUN cat > /etc/nginx/conf.d/default.conf <<'NGINX'
 server {
     listen 80;
@@ -37,14 +40,25 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
+    # Health check for DO App Platform
+    location /healthz {
+        access_log off;
+        return 200 "ok";
+        add_header Content-Type text/plain;
+    }
+
     # SPA fallback
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API requests
+    # Proxy API requests (docker-compose / self-hosted only)
+    # On DO App Platform, /api/* is routed to the api service via app spec
     location /api/ {
-        proxy_pass http://api:8000;
+        # Use resolver for dynamic upstream (works in both Docker and DO)
+        resolver 127.0.0.11 valid=30s ipv6=off;
+        set $upstream_api http://api:8000;
+        proxy_pass $upstream_api;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
