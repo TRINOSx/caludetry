@@ -1,22 +1,18 @@
 # ═══════════════════════════════════════════════════════════
-# VOC Mesh Platform — Root Dockerfile
+# VOC Mesh Platform — Root Dockerfile (DO detection fallback)
 # ═══════════════════════════════════════════════════════════
 #
-# This Dockerfile exists so DigitalOcean App Platform can
-# detect the repo as deployable. The actual services are
-# deployed via .do/app.yaml which points to individual
-# Dockerfiles in each service directory.
-#
-# For local development, use docker-compose:
-#   cd voc-mesh-platform && docker compose up -d
-#
-# For DigitalOcean App Platform:
-#   Connect repo → DO auto-detects .do/app.yaml
+# The actual deployment uses .do/app.yaml which points to
+# individual Dockerfiles per service. This root Dockerfile
+# exists so DO App Platform detects a deployable component.
 # ═══════════════════════════════════════════════════════════
 
 FROM python:3.12-slim
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY voc-mesh-platform/apps/api/pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip \
@@ -26,7 +22,7 @@ COPY voc-mesh-platform/apps/api/app ./app
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

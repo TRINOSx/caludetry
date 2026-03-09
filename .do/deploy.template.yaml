@@ -1,62 +1,24 @@
 # ═══════════════════════════════════════════════════════════
-# DigitalOcean App Platform — Quick Start Guide
+# DigitalOcean App Platform — Quick Start
 # ═══════════════════════════════════════════════════════════
 #
-# DEPLOYMENT OPTIONS:
+# WEB-ONLY deployment (api + dashboard + managed PostgreSQL)
+# ML pipeline and edge-agent are NOT included (no GPU)
 #
-# Option 1: Full App Spec (recommended)
-#   - Uses .do/app.yaml
-#   - Deploys all 4 services + managed DB + Redis
-#   - DO auto-detects this file
+# DEPLOY:
+#   1. Connect repo in DO App Platform
+#   2. DO auto-detects .do/app.yaml
+#   3. Set real secrets in Settings → Env:
+#      - VOC_JWT_SECRET (openssl rand -hex 32)
+#      - VOC_ANTHROPIC_API_KEY
+#   4. Run DB init: voc-mesh-platform/database/001_init.sql
+#   5. Update VOC_CORS_ORIGINS with your app URL
 #
-# Option 2: doctl CLI
-#   doctl apps create --spec .do/app.yaml
-#   doctl apps update <app-id> --spec .do/app.yaml
+# IMPORTANT: all env vars use prefix "VOC_"
+#   e.g. VOC_DATABASE_URL, VOC_JWT_SECRET, VOC_REDIS_URL
 #
-# Option 3: Single service (minimal)
-#   - Point DO to root Dockerfile
-#   - Source dir: voc-mesh-platform/apps/api
-#   - Only deploys the API
-#
-# ═══════════════════════════════════════════════════════════
-#
-# AFTER DEPLOY — Required Steps:
-#
-# 1. Set real secrets in DO dashboard → App → Settings → Env:
-#    - JWT_SECRET (generate: openssl rand -hex 32)
-#    - ANTHROPIC_API_KEY (from console.anthropic.com)
-#
-# 2. Run DB init script:
-#    - Connect to managed DB via DO console
-#    - Run: voc-mesh-platform/database/001_init.sql
-#    - Or use the db-migrate job (PRE_DEPLOY)
-#
-# 3. Set up MQTT broker:
-#    - DO App Platform doesn't support TCP (MQTT needs 1883)
-#    - Options:
-#      a) DO Droplet with Mosquitto
-#      b) HiveMQ Cloud (free tier)
-#      c) EMQX Cloud
-#    - Update MQTT_BROKER_URL env var
-#
-# 4. Update CORS_ORIGINS with your app URL:
-#    - e.g., https://voc-mesh-platform-xxxxx.ondigitalocean.app
-#
-# 5. Update VITE_API_URL for dashboard build:
-#    - Same as your app URL
-#
-# ═══════════════════════════════════════════════════════════
-#
-# COST ESTIMATE (monthly):
-#
-#   api (professional-xs):     $12
-#   dashboard (basic-xxs):     $5
-#   edge-agent (professional-xs): $12
-#   ml-pipeline x2 (professional-xs): $24
+# COST (~$25/month):
+#   api (basic-xxs):            $5
+#   dashboard (basic-xxs):      $5
 #   PostgreSQL (db-s-1vcpu-1gb): $15
-#   Redis (db-s-1vcpu-1gb):     $15
-#   MQTT broker (Droplet):      $6
-#   ─────────────────────────
-#   Total:                      ~$89/month
-#
 # ═══════════════════════════════════════════════════════════
