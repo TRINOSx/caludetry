@@ -34,7 +34,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   if (res.status === 401) {
     logout();
-    window.location.href = '/';
+    window.location.href = '/agro/';
     throw new ApiError(401, 'Unauthorized');
   }
 

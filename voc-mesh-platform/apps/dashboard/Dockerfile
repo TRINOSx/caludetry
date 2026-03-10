@@ -15,18 +15,13 @@ FROM nginx:1.25-alpine
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Add custom nginx config
-COPY --from=build /app/dist /usr/share/nginx/html
+# Add custom nginx config — serves under /agro/ path
+COPY --from=build /app/dist /usr/share/nginx/html/agro
 
-# Nginx config template — API_URL is resolved at container start
-# On DO App Platform, routing is handled by the app spec (routes in .do/app.yaml)
-# so the /api/ proxy is only used for docker-compose (local dev / self-hosted)
 RUN cat > /etc/nginx/conf.d/default.conf <<'NGINX'
 server {
     listen 80;
     server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
 
     # gzip
     gzip on;
@@ -34,28 +29,32 @@ server {
     gzip_vary on;
     gzip_min_length 256;
 
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Health check for DO App Platform
+    # Health check
     location /healthz {
         access_log off;
         return 200 "ok";
         add_header Content-Type text/plain;
     }
 
-    # SPA fallback
-    location / {
-        try_files $uri $uri/ /index.html;
+    # Dashboard under /agro/
+    location /agro/ {
+        alias /usr/share/nginx/html/agro/;
+        try_files $uri $uri/ /agro/index.html;
+
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
     }
 
-    # Proxy API requests (docker-compose / self-hosted only)
-    # On DO App Platform, /api/* is routed to the api service via app spec
+    # Redirect /agro to /agro/
+    location = /agro {
+        return 301 /agro/;
+    }
+
+    # Proxy API requests
     location /api/ {
-        # Use resolver for dynamic upstream (works in both Docker and DO)
         resolver 127.0.0.11 valid=30s ipv6=off;
         set $upstream_api http://api:8000;
         proxy_pass $upstream_api;
