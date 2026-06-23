@@ -97,6 +97,10 @@ export default function VOCRealtimeChart({
   const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false,
+    transitions: {
+      active: { animation: { duration: 0 } },
+    },
     interaction: {
       mode: 'index',
       intersect: false,
@@ -107,9 +111,9 @@ export default function VOCRealtimeChart({
         position: 'top',
         labels: {
           color: '#8B95A5',
-          font: { family: 'IBM Plex Sans', size: 11 },
-          boxWidth: 12,
-          padding: 12,
+          font: { family: 'IBM Plex Sans', size: 10 },
+          boxWidth: 10,
+          padding: 8,
           filter: (item) => !item.text.includes('Threshold'),
         },
       },
@@ -119,34 +123,34 @@ export default function VOCRealtimeChart({
         borderWidth: 1,
         titleColor: '#E8EDF2',
         bodyColor: '#8B95A5',
-        titleFont: { family: 'Space Mono', size: 12 },
-        bodyFont: { family: 'IBM Plex Sans', size: 11 },
-        padding: 10,
+        titleFont: { family: 'Space Mono', size: 11 },
+        bodyFont: { family: 'IBM Plex Sans', size: 10 },
+        padding: 8,
       },
     },
     scales: {
       x: {
         grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: '#5A6577', font: { family: 'IBM Plex Sans', size: 10 }, maxTicksLimit: 8 },
+        ticks: { color: '#5A6577', font: { family: 'IBM Plex Sans', size: 9 }, maxTicksLimit: 6 },
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: '#5A6577', font: { family: 'IBM Plex Sans', size: 10 } },
+        ticks: { color: '#5A6577', font: { family: 'IBM Plex Sans', size: 9 } },
       },
     },
   };
 
   return (
-    <div className="glass-panel p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display text-sm text-text">VOC Realtime</h3>
-        <div className="flex gap-1">
+    <div className="glass-panel p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-display text-xs text-text">VOC Realtime</h3>
+        <div className="flex gap-0.5">
           {TIME_RANGES.map((range) => (
             <button
               key={range}
               onClick={() => onTimeRangeChange(range)}
               className={clsx(
-                'px-2.5 py-1 text-xs font-body rounded transition-colors',
+                'px-2 py-0.5 text-[10px] font-body rounded transition-colors',
                 timeRange === range
                   ? 'bg-voc/20 text-voc'
                   : 'text-text-dim hover:text-text-muted hover:bg-white/5',
@@ -157,7 +161,7 @@ export default function VOCRealtimeChart({
           ))}
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-40">
         <Line ref={chartRef} data={chartData} options={options} />
       </div>
     </div>

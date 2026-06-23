@@ -228,19 +228,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <VOCRealtimeChart
-        data={chartData}
-        timeRange={timeRange}
-        onTimeRangeChange={setTimeRange}
-        thresholds={{ tvoc: 500, co: 100 }}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <VOCRealtimeChart
+          data={chartData}
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+          thresholds={{ tvoc: 500, co: 100 }}
+        />
+        <VOCRadarChart current={currentRadar} average={averageRadar} />
+      </div>
 
       <PredictionTimeline predictions={predictions} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <VOCRadarChart current={currentRadar} average={averageRadar} />
-        <MetabolismPanel data={metabolismData} history={metabolismHistory} />
-      </div>
+      <MetabolismPanel data={metabolismData} history={metabolismHistory} />
 
       {alerts.filter((a) => !a.resolved).length > 0 && (
         <div className="glass-panel p-4">

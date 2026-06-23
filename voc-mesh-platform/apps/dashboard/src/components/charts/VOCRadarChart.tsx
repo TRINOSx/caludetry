@@ -96,16 +96,16 @@ export default function VOCRadarChart({ current, average }: VOCRadarChartProps) 
         },
       },
     },
-    animation: {
-      duration: 600,
-      easing: 'easeOutQuart',
+    animation: false,
+    transitions: {
+      active: { animation: { duration: 0 } },
     },
   };
 
   return (
-    <div className="glass-panel p-4">
-      <h3 className="font-display text-sm text-text mb-4">VOC Compound Profile</h3>
-      <div className="h-64">
+    <div className="glass-panel p-3">
+      <h3 className="font-display text-xs text-text mb-2">VOC Compound Profile</h3>
+      <div className="h-44">
         <Radar data={chartData} options={options} />
       </div>
     </div>
